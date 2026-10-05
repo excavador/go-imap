@@ -74,6 +74,7 @@ const (
 	CapUIDOnly          Cap = "UIDONLY"            // RFC 9586
 	CapListMetadata     Cap = "LIST-METADATA"      // RFC 9590
 	CapInProgress       Cap = "INPROGRESS"         // RFC 9585
+	CapGmailExt1        Cap = "X-GM-EXT-1"         // Gmail extensions
 )
 
 var imap4rev2Caps = CapSet{

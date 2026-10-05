@@ -246,6 +246,13 @@ func writeSearchKey(enc *imapwire.Encoder, criteria *imap.SearchCriteria) {
 		}
 	}
 
+	if criteria.GmailRaw != "" {
+		encodeItem().Atom("X-GM-RAW").SP().String(criteria.GmailRaw)
+	}
+	if criteria.GmailMsgID != 0 {
+		encodeItem().Atom("X-GM-MSGID").SP().ModSeq(criteria.GmailMsgID)
+	}
+
 	for _, not := range criteria.Not {
 		encodeItem().Atom("NOT").SP()
 		enc.Special('(')
@@ -377,6 +384,9 @@ func searchCriteriaIsASCII(criteria *imap.SearchCriteria) bool {
 		if !isASCII(s) {
 			return false
 		}
+	}
+	if !isASCII(criteria.GmailRaw) {
+		return false
 	}
 	for _, not := range criteria.Not {
 		if !searchCriteriaIsASCII(&not) {
