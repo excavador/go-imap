@@ -802,7 +802,13 @@ func (c *Client) handleFetch(seqNum uint32) error {
 			}
 			item = FetchItemDataModSeq{ModSeq: modSeq}
 		default:
-			return fmt.Errorf("unsupported msg-att name: %q", attName)
+			// Servers can send extension attributes we don't know about
+			// (RFC 3501 section 7.4.2, RFC 9051 section 7.5.2). Skip them
+			// instead of failing the whole response.
+			if !dec.ExpectSP() || !dec.SkipValue() {
+				return dec.Err()
+			}
+			return nil
 		}
 
 		numAtts++

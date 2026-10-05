@@ -45,3 +45,30 @@ func TestExpectMailboxInvalidUTF7(t *testing.T) {
 	}
 	expectDecoderExpectError(t, dec)
 }
+
+func TestSkipValue(t *testing.T) {
+	for _, s := range []string{
+		"foo", "123", `"quoted \"str\""`, "NIL", "{3}\r\nabc", "()",
+		`(1 "two" NIL (3 (four)) {3}` + "\r\nabc)",
+	} {
+		dec := newTestDecoder(s + " tail\r\n")
+		if !dec.SkipValue() {
+			t.Errorf("SkipValue(%q) failed: %v", s, dec.Err())
+			continue
+		}
+		var tail string
+		if !dec.ExpectSP() || !dec.ExpectAtom(&tail) || tail != "tail" {
+			t.Errorf("SkipValue(%q) didn't stop at the end of the value: %v", s, dec.Err())
+		}
+	}
+}
+
+func TestSkipValueMaxDepth(t *testing.T) {
+	dec := newTestDecoder(strings.Repeat("(", 5000) + "\r\n")
+	if dec.SkipValue() {
+		t.Fatal("SkipValue accepted a list nested too deeply")
+	}
+	if err := dec.Err(); err == nil || !strings.Contains(err.Error(), "depth") {
+		t.Fatalf("decoder error = %v, want an error mentioning depth", err)
+	}
+}

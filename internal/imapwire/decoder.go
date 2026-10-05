@@ -298,6 +298,42 @@ func (dec *Decoder) DiscardValue() bool {
 	return false
 }
 
+// SkipValue reads and discards a generic value: an atom, a number, a quoted
+// string, NIL, a literal or a (possibly nested) parenthesized list.
+//
+// Unlike DiscardValue, literals are streamed to io.Discard instead of being
+// buffered in memory.
+func (dec *Decoder) SkipValue() bool {
+	var s string
+	if dec.Quoted(&s) {
+		return true
+	}
+
+	if lit, _, ok := dec.LiteralReader(); ok {
+		_, err := io.Copy(io.Discard, lit)
+		return dec.returnErr(err)
+	}
+
+	isList, err := dec.List(func() error {
+		if !dec.SkipValue() {
+			return dec.Err()
+		}
+		return nil
+	})
+	if err != nil {
+		return dec.returnErr(err)
+	} else if isList {
+		return true
+	}
+
+	if dec.Atom(&s) {
+		return true
+	}
+
+	dec.Expect(false, "value")
+	return false
+}
+
 func (dec *Decoder) numberStr() (s string, ok bool) {
 	var sb strings.Builder
 	for {
@@ -471,7 +507,9 @@ func (dec *Decoder) List(f func() error) (isList bool, err error) {
 	}()
 
 	if dec.listDepth >= maxListDepth {
-		return false, fmt.Errorf("imapwire: exceeded max depth")
+		err := fmt.Errorf("imapwire: exceeded max depth")
+		dec.returnErr(err)
+		return false, err
 	}
 
 	for {
