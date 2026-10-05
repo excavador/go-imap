@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version:
+          - '1.18'
+          - 'stable'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Run go vet
+        # Disable composites check: upstream unkeyed go-message.Header literals fail on Go 1.27
+        run: go vet -composites=false ./...
+
+      - name: Run go test
+        run: go test -race -count=1 ./...
+
+      - name: Check code formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Code formatting issues found:"
+            gofmt -l .
+            exit 1
+          fi
